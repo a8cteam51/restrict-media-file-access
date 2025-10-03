@@ -1,0 +1,42 @@
+name: Fill in the Scaffold Placeholders
+
+on:
+  repository_dispatch:
+    types: [ fill_scaffold ]
+  workflow_dispatch:
+
+jobs:
+  fill-scaffold:
+    if: github.repository != 'a8cteam51/team51-plugin-scaffold' # Don't run this on the scaffold itself.
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup proper Node.js version
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'package.json'
+
+      - name: Set github actions[bot] as the committer.
+        run: git config --local user.name 'github-actions[bot]' && git config --local user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Rename the readme and plugin file.
+        run: |
+          git mv --force README.scaffold.md README.md
+          git mv team51-plugin-scaffold.php ${{ github.event.repository.name }}.php
+
+      - name: Commit the changed files.
+        run: git commit -am "chore -- rename files from scaffolding"
+
+      - name: Perform string replacements within the files.
+        run: node ./.github/workflows/fill-in-scaffold.mjs '${{ toJSON( github.event.repository ) }}'
+
+      - name: Commit the changed files.
+        run: git commit -am "chore -- fill in scaffolding placeholders"
+
+      - name: Push all the changed files.
+        run: git push

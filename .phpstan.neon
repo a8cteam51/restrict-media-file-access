@@ -1,0 +1,8 @@
+includes:
+    - vendor/a8cteam51/team51-configs/quality-assurance/phpstan.dist.neon
+
+parameters:
+    ignoreErrors:
+        - '#Construct empty\(\)#'
+        - identifier: constant.notFound
+        - '#Path in require_once\(\) ".//wp-admin/includes/file.php" is not a file or it does not exist.#'

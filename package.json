@@ -1,0 +1,68 @@
+{
+  "name": "restrict-media-file-access",
+  "version": "1.0.0",
+  "description": "Restrict Media File Access",
+  "author": {
+    "name": "Automattic",
+    "url": "https://wpspecialprojects.wordpress.com"
+  },
+  "license": "GPL-2.0-or-later",
+  "keywords": [
+    "wordpress"
+  ],
+  "homepage": "https://wordpress.org/plugins/restrict-media-file-access",
+  "repository": "https://github.com/a8cteam51/restrict-media-file-access",
+  "bugs": "https://github.com/a8cteam51/restrict-media-file-access/issues",
+  "engines": {
+    "node": ">=20.10",
+    "npm": ">=10.5"
+  },
+  "devDependencies": {
+    "@csstools/postcss-sass": "^5.0.1",
+    "@wordpress/browserslist-config": "^5.28.0",
+    "@wordpress/env": "^10.8.1",
+    "@wordpress/postcss-plugins-preset": "^4.29.0",
+    "@wordpress/scripts": "^30.19.0",
+    "npm-run-all": "^4.1.5",
+    "postcss-cli": "^10.1.0",
+    "rtlcss": "^4.1.1"
+  },
+  "rtlcssConfig": {
+    "options": {
+      "autoRename": false,
+      "autoRenameStrict": false,
+      "blacklist": {},
+      "clean": true,
+      "greedy": false,
+      "processUrls": false,
+      "stringMap": []
+    },
+    "plugins": [],
+    "map": false
+  },
+  "prettier": "@wordpress/prettier-config",
+  "browserslist": [
+    "extends @wordpress/browserslist-config"
+  ],
+  "scripts": {
+    "wp-env": "wp-env",
+    "wp-env:start": "wp-env start",
+    "wp-env:update": "wp-env start --update",
+    "wp-env:stop": "wp-env stop",
+    "lint:pkg-json": "wp-scripts lint-pkg-json",
+    "lint:readme-md": "wp-scripts lint-md-docs README.md",
+    "check-engines": "wp-scripts check-engines",
+    "check-licenses": "wp-scripts check-licenses",
+    "tests:start": "npm-run-all --parallel wp-env:start selenium:start",
+    "tests:destroy": "wp-env destroy",
+    "tests:run": "npm-run-all --sequential tests:start tests:run:integration tests:run:end-to-end",
+    "tests:run:integration": "wp-env run tests-wordpress --env-cwd=wp-content/plugins/restrict-media-file-access composer run-script tests:run:integration",
+    "tests:run:integration:single": "wp-env run tests-wordpress --env-cwd=wp-content/plugins/restrict-media-file-access composer run-script tests:run:integration:single",
+    "tests:run:end-to-end": "wp-env run tests-wordpress --env-cwd=wp-content/plugins/restrict-media-file-access composer run-script tests:run:end-to-end",
+    "tests:run:end-to-end:single": "wp-env run tests-wordpress --env-cwd=wp-content/plugins/restrict-media-file-access composer run-script tests:run:end-to-end:single",
+    "tests:output-wp-path": "npm run wp-env -- install-path",
+    "tests:export-db": "npm run wp-env -- run tests-cli wp db export wp-content/plugins/restrict-media-file-access/tests/Support/Data/dump.sql",
+    "selenium:start": "docker container start selenium-chromium",
+    "selenium:stop": "docker container stop selenium-chromium"
+  }
+}

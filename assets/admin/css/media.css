@@ -1,0 +1,88 @@
+@media screen and (max-width: 900px) {
+	.compat-field-restricted_file {
+		.dashicons-info {
+			padding: 0;
+			display: flex !important;
+		}
+
+		.label {
+			span.alignleft {
+				padding-left: 0;
+			}
+		}
+
+		.field {
+			float: none;
+			width: 100%;
+
+			.help {
+				margin-top: 43px;
+			}
+		}
+	}
+
+	.compat-field-passport_audiences {
+		display: flex !important;
+		flex-direction: column;
+		align-items: flex-start;
+
+		.label {
+			span.alignleft {
+				padding-left: 0;
+			}
+		}
+
+		.field {
+			float: none;
+			width: 100%;
+		}
+	}
+}
+
+@media screen and (max-width: 480px) {
+	.compat-field-restricted_file {
+		.dashicons-info {
+			padding: 0;
+			display: flex !important;
+		}
+
+		.label {
+			min-width: unset;
+
+			span.alignleft {
+				text-align: left;
+			}
+		}
+
+		.field {
+			float: none;
+			width: 100%;
+
+			.help {
+				margin-top: 43px;
+			}
+
+			input {
+				margin-top: 3px !important;
+			}
+		}
+	}
+
+	.compat-field-passport_audiences {
+		display: flex !important;
+		flex-direction: column;
+		align-items: flex-start;
+
+		.label {
+			min-width: unset;
+			span.alignleft {
+				text-align: left;
+			}
+		}
+
+		.field {
+			float: none;
+			width: 100%;
+		}
+	}
+}

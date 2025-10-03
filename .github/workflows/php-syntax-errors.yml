@@ -1,0 +1,28 @@
+name: PHP Syntax Errors
+
+on:
+  push:
+    branches: [ trunk, develop ]
+  pull_request:
+    branches: [ trunk, develop ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        php: [ 8.3, 8.4 ]
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup proper PHP version
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Check all files for syntax errors
+        if: ${{ matrix.php >= 8.3 }} # At least the minimum PHP version required by the plugin.
+        run: find -L $GITHUB_WORKSPACE -path $GITHUB_WORKSPACE/vendor -prune -o -name '*.php' -print0 | xargs -0 -n 1 -P 4 php -l

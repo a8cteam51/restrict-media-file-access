@@ -14,9 +14,9 @@
  * Plugin Name:             Restrict Media File Access
  * Plugin URI:              https://wpspecialprojects.wordpress.com
  * Description:             Restrict access to media files by custom access control.
- * Version:                 1.0.17
- * Requires at least:       6.7
- * Tested up to:            6.7
+ * Version:                 1.0.0
+ * Requires at least:       6.0
+ * Tested up to:            6.8
  * Requires PHP:            8.3
  * Author:                  WordPress.com Special Projects
  * Author URI:              https://wpspecialprojects.wordpress.com

@@ -59,6 +59,7 @@ class SelfUpdate {
 
 		$output              = json_decode( wp_remote_retrieve_body( $response ), true );
 		$new_version_number  = $output['tag_name'];
+		$new_version_number  = str_replace( 'v', '', $new_version_number );
 		$is_update_available = version_compare( $plugin_data['Version'], $new_version_number, '<' );
 
 		if ( ! $is_update_available ) {

@@ -461,7 +461,7 @@ class AttachmentsProtector {
 		if ( 0 === $filesize ) {
 			return new \WP_Error( 'range_not_satisfiable' );
 		}
-		$length = $range_end + 1;
+		$length = $range_end;
 		if ( $length > $filesize ) {
 			$length = $filesize;
 		}
@@ -548,7 +548,11 @@ class AttachmentsProtector {
 	/**
 	 * Send a 416 Range Not Satisfiable response and exit.
 	 *
+	 * @since   1.0.1
+	 * @version 1.0.1
+	 *
 	 * @param int $filesize File size.
+	 *
 	 * @return void
 	 */
 	private function respond_with_416( int $filesize ): void {

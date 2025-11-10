@@ -203,6 +203,16 @@ class RestApi {
 			);
 		}
 
+		$is_disabled = apply_filters( 'rmfa_restricted_file_is_disabled', false, $attachment );
+
+		if ( $is_disabled ) {
+			return new WP_Error(
+				'rmfa_file_restrictions_disabled',
+				__( 'The file cannot be restricted because it has restrictions disabled.', 'restrict-media-file-access' ),
+				array( 'status' => 403 )
+			);
+		}
+
 		try {
 			if ( $restrict ) {
 				return $this->set_file_as_protected( $file_id, $update_post );

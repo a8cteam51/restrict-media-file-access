@@ -52,11 +52,6 @@ class Settings {
 			);
 		}
 
-		// Only load on media pages or when media modal is used
-		if ( ! in_array( $hook, array( 'upload.php', 'post.php', 'post-new.php' ), true ) ) {
-			return;
-		}
-
 		$rmfa_media_js = restrict_media_file_access_get_asset_meta( RESTRICT_MEDIA_FILE_ACCESS_DIR_PATH . 'assets/admin/js/media.js', array( 'jquery', 'lodash', 'media-editor' ) );
 
 		if ( null !== $rmfa_media_js ) {

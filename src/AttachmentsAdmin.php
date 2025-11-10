@@ -79,19 +79,52 @@ class AttachmentsAdmin {
 
 		$is_restricted = rmfa_is_media_restricted( $post->ID );
 
-		// Allow filtering of the help text
+		/**
+		 * Filter to change the help text.
+		 *
+		 * @since   1.0.0
+		 * @version 1.0.0
+		 *
+		 * @param string    $help_text The help text.
+		 * @param \WP_Post $post The post object.
+		 *
+		 * @return string The help text.
+		 */
 		$help_text = apply_filters(
 			'rmfa_restricted_file_help_text',
 			__( 'When enabled, this file will be moved to a protected directory and will only be accessible to users with appropriate permissions.', 'restrict-media-file-access' ),
 			$post
 		);
 
-		// Allow filtering of the helps text
+		/**
+		 * Filter to change the helps text.
+		 *
+		 * @since   1.0.0
+		 * @version 1.0.0
+		 *
+		 * @param string    $help_text The helps text.
+		 * @param \WP_Post $post The post object.
+		 *
+		 * @return string The helps text.
+		 */
 		$helps_text = apply_filters(
 			'rmfa_restricted_file_helps_text',
 			__( 'Check this to restrict access to users with access only.', 'restrict-media-file-access' ),
 			$post
 		);
+
+		/**
+		 * Filter to disable the restricted file checkbox.
+		 *
+		 * @since   1.0.2
+		 * @version 1.0.2
+		 *
+		 * @param bool    $is_disabled Whether the restricted file checkbox should be disabled.
+		 * @param \WP_Post $post The post object.
+		 *
+		 * @return bool Whether the restricted file checkbox should be disabled.
+		 */
+		$is_disabled = apply_filters( 'rmfa_restricted_file_is_disabled', false, $post );
 
 		$form_fields['restricted_file'] = array(
 			'label' => __( 'Is restricted file', 'restrict-media-file-access' ) .
@@ -108,11 +141,13 @@ class AttachmentsAdmin {
 					data-original-url="%2$s"
 					data-protected-url="%3$s"
 					class="rmfa-restricted-toggle"
-					%4$s />',
+					%4$s
+					%5$s />',
 				$post->ID,
 				wp_get_attachment_url( $post->ID ),
 				home_url( '/' . RESTRICT_MEDIA_FILE_ACCESS_PROTECTED_PATH . '/' . basename( $file_path ) ),
-				checked( $is_restricted, '1', false )
+				checked( $is_restricted, '1', false ),
+				disabled( $is_disabled, true, false )
 			),
 			'helps' => $helps_text,
 		);

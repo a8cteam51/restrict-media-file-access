@@ -125,9 +125,6 @@ class AttachmentsAdmin {
 		 * @return bool Whether the restricted file checkbox should be disabled.
 		 */
 		$is_disabled = apply_filters( 'rmfa_restricted_file_is_disabled', false, $post );
-		if ( $is_disabled ) {
-			$form_fields['restricted_file']['input'] = 'disabled';
-		}
 
 		$form_fields['restricted_file'] = array(
 			'label' => __( 'Is restricted file', 'restrict-media-file-access' ) .

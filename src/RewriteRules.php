@@ -25,6 +25,9 @@ class RewriteRules {
 
 		// Setup query vars
 		add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
+
+		// Flush rewrite rules after init if activation flag is set.
+		add_action( 'init', array( $this, 'maybe_flush_rewrite_rules' ), 999 );
 	}
 
 	/**
@@ -57,5 +60,22 @@ class RewriteRules {
 		$query_vars[] = 'protected_file';
 
 		return $query_vars;
+	}
+
+	/**
+	 * Flush rewrite rules if activation flag is set.
+	 *
+	 * This ensures rewrite rules are registered before flushing.
+	 *
+	 * @since   1.0.3
+	 * @version 1.0.3
+	 *
+	 * @return void
+	 */
+	public function maybe_flush_rewrite_rules(): void {
+		if ( false !== get_transient( '_rmfa_flush_rewrite_rules' ) ) {
+			flush_rewrite_rules();
+			delete_transient( '_rmfa_flush_rewrite_rules' );
+		}
 	}
 }

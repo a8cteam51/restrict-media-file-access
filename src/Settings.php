@@ -35,11 +35,9 @@ class Settings {
 	 * @since   1.0.0
 	 * @version 1.0.0
 	 *
-	 * @param string $hook The current admin page hook.
-	 *
 	 * @return void
 	 */
-	public function enqueue_assets( string $hook ): void {
+	public function enqueue_assets(): void {
 
 		$rmfa_media = restrict_media_file_access_get_asset_meta( RESTRICT_MEDIA_FILE_ACCESS_DIR_PATH . 'assets/admin/css/media.css' );
 

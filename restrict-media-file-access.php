@@ -14,7 +14,7 @@
  * Plugin Name:             Restrict Media File Access
  * Plugin URI:              https://wpspecialprojects.wordpress.com
  * Description:             Restrict access to media files by custom access control.
- * Version:                 1.0.3
+ * Version:                 1.0.4
  * Requires at least:       6.4
  * Tested up to:            6.8
  * Requires PHP:            8.3
@@ -98,7 +98,8 @@ register_activation_hook(
 			}
 		}
 
-		// Flush rewrite rules to ensure the new rewrite rules are loaded.
-		flush_rewrite_rules();
+		// Set a flag to flush rewrite rules after init has fired.
+		// This ensures rewrite rules are registered before flushing.
+		set_transient( '_rmfa_flush_rewrite_rules', true, 60 );
 	}
 );

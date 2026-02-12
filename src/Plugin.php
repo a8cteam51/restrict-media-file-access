@@ -107,6 +107,7 @@ class Plugin {
 			'cache-cleanup'         => new CacheCleanup(),
 			'attachments-tracking'  => new AttachmentsTracking(),
 			'rest-api'              => new RestApi(),
+			'auto-restrict'         => new AttachmentsAutoRestrict(),
 		);
 
 		foreach ( $this->services as $service ) {

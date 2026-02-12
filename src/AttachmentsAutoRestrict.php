@@ -119,9 +119,29 @@ class AttachmentsAutoRestrict {
 
 		self::$processing = true;
 
-		delete_post_meta( $object_id, '_rmfa_pending_auto_restrict' );
-		rmfa_set_file_as_protected( $object_id );
+		try {
+			$result = rmfa_set_file_as_protected( $object_id );
 
-		self::$processing = false;
+			if ( true === $result ) {
+				delete_post_meta( $object_id, '_rmfa_pending_auto_restrict' );
+			} else {
+				rmfa_log_error(
+					sprintf(
+						'rmfa_auto_restrict_on_upload_failed: Could not auto-restrict attachment %d. rmfa_set_file_as_protected() returned false.',
+						$object_id
+					)
+				);
+			}
+		} catch ( \Throwable $e ) {
+			rmfa_log_error(
+				sprintf(
+					'rmfa_auto_restrict_on_upload_exception: Exception while auto-restricting attachment %d: %s',
+					$object_id,
+					$e->getMessage()
+				)
+			);
+		} finally {
+			self::$processing = false;
+		}
 	}
 }

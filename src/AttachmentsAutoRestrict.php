@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
  * automatically restricted. The actual restriction is deferred until
  * attachment metadata has been fully saved.
  *
- * @since   1.0.5
+ * @since   1.0.6
  * @version 1.0.6
  */
 class AttachmentsAutoRestrict {

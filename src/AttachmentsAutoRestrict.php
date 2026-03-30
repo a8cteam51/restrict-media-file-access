@@ -101,11 +101,10 @@ class AttachmentsAutoRestrict {
 	 * @param int    $meta_id    The meta ID.
 	 * @param int    $object_id  The attachment (post) ID.
 	 * @param string $meta_key   The meta key.
-	 * @param mixed  $meta_value The meta value.
 	 *
 	 * @return void
 	 */
-	public function maybe_auto_restrict_on_meta_change( int $meta_id, int $object_id, string $meta_key, $meta_value ): void {
+	public function maybe_auto_restrict_on_meta_change( int $meta_id, int $object_id, string $meta_key ): void {
 		if ( '_wp_attachment_metadata' !== $meta_key ) {
 			return;
 		}
@@ -205,7 +204,8 @@ class AttachmentsAutoRestrict {
 			return true;
 		}
 
-		$fallback_sizes   = array( 'thumbnail', 'medium', 'large' );
+		$fallback_sizes = array( 'thumbnail', 'medium', 'large' );
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 		$fallback_sizes   = apply_filters( 'fallback_intermediate_image_sizes', $fallback_sizes, $metadata );
 		$registered_sizes = wp_get_registered_image_subsizes();
 		$expected         = array_intersect_key( $registered_sizes, array_flip( $fallback_sizes ) );

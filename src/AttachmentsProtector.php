@@ -46,7 +46,7 @@ class AttachmentsProtector {
 	 * @return string|false The redirect URL, or false to cancel the redirect.
 	 */
 	public function prevent_protected_file_redirect( $redirect_url, $requested_url ) {
-		if ( get_query_var( 'protected_file' ) ) {
+		if ( '' !== get_query_var( 'protected_file' ) ) {
 			return false;
 		}
 

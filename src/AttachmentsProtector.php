@@ -21,8 +21,36 @@ class AttachmentsProtector {
 	 * @return void
 	 */
 	public function initialize(): void {
-		// Setup file protection
-		add_action( 'template_redirect', array( $this, 'handle_protected_file' ) );
+		// Setup file protection — priority 5 to run before redirect_canonical (priority 10).
+		add_action( 'template_redirect', array( $this, 'handle_protected_file' ), 5 );
+
+		// Prevent WordPress canonical redirect from adding trailing slashes to protected file URLs.
+		add_filter( 'redirect_canonical', array( $this, 'prevent_protected_file_redirect' ), 10, 2 );
+	}
+
+	/**
+	 * Prevent WordPress canonical redirect for protected file URLs.
+	 *
+	 * WordPress's redirect_canonical() runs on template_redirect at priority 10
+	 * and adds trailing slashes to URLs, causing a 301 redirect before the
+	 * protected file handler can serve the file. This breaks email image proxies
+	 * (Gmail, Outlook, etc.) which may not follow redirects reliably, and also
+	 * strips query string parameters like access_token during the redirect.
+	 *
+	 * @since   1.0.7
+	 * @version 1.0.7
+	 *
+	 * @param string $redirect_url  The redirect URL.
+	 * @param string $requested_url The requested URL.
+	 *
+	 * @return string|false The redirect URL, or false to cancel the redirect.
+	 */
+	public function prevent_protected_file_redirect( $redirect_url, $requested_url ) {
+		if ( '' !== get_query_var( 'protected_file' ) ) {
+			return false;
+		}
+
+		return $redirect_url;
 	}
 
 	/**

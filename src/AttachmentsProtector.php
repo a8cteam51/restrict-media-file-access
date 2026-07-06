@@ -308,6 +308,36 @@ class AttachmentsProtector {
 	private function serve_file( int $attachment_id, string $file_path ): void {
 		$mime_type = $this->determine_mime_type( $file_path );
 
+		/**
+		 * Filter the bytes served for a protected file, allowing an integration to
+		 * substitute the on-disk contents on a per-request basis (e.g. watermarking).
+		 *
+		 * Returning a non-string (the default `null`) leaves serving unchanged.
+		 * Returning a string serves those bytes verbatim instead of the file, with
+		 * range serving disabled — the substitute is per-request and differs from
+		 * the on-disk file. Note that $file_path is already resolved to the requested
+		 * size variant, so the substitute applies to the exact bytes being served.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string|null $substitute_contents Substitute bytes, or null to serve the file unchanged.
+		 * @param int         $attachment_id       The attachment ID.
+		 * @param string      $file_path           Absolute path to the file being served.
+		 * @param string      $mime_type           The resolved MIME type.
+		 */
+		$substitute_contents = apply_filters(
+			'restrict_media_file_access_serve_contents',
+			null,
+			$attachment_id,
+			$file_path,
+			$mime_type
+		);
+
+		if ( is_string( $substitute_contents ) ) {
+			$this->serve_substitute_contents( $substitute_contents, $mime_type, $attachment_id, $file_path );
+			return;
+		}
+
 		$filesize_raw = filesize( $file_path );
 		$filesize     = false === $filesize_raw ? 0 : $filesize_raw;
 		$start        = 0;
@@ -345,6 +375,42 @@ class AttachmentsProtector {
 
 		$this->output_file_range( $file_path, $start, $end );
 		// phpcs:ignore
+		exit;
+	}
+
+	/**
+	 * Serve substitute contents in place of the on-disk file.
+	 *
+	 * The substitute bytes are produced per-request and differ from the file on
+	 * disk, so range serving is disabled (Accept-Ranges: none) — email image
+	 * proxies issue full GETs, and a Range against mismatched bytes would corrupt
+	 * the response.
+	 *
+	 * @since   1.1.0
+	 * @version 1.1.0
+	 *
+	 * @param string $contents      The substitute bytes to serve.
+	 * @param string $mime_type     The MIME type to report.
+	 * @param int    $attachment_id The attachment ID.
+	 * @param string $file_path     Absolute path to the file being substituted.
+	 *
+	 * @return void
+	 */
+	private function serve_substitute_contents( string $contents, string $mime_type, int $attachment_id, string $file_path ): void {
+		header( 'Content-Type: ' . $mime_type );
+		header( 'Content-Disposition: inline; filename="' . basename( $file_path ) . '"' );
+		header( 'Accept-Ranges: none' );
+		header( 'Content-Length: ' . strlen( $contents ) );
+
+		do_action( 'restrict_media_file_access_before_serve', $attachment_id, $file_path );
+
+		// Clear any output buffers.
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+
+		// phpcs:ignore
+		echo $contents;
 		exit;
 	}
 

@@ -5,7 +5,7 @@
 **Requires at least:** 6.5  
 **Tested up to:** 6.5  
 **Requires PHP:** 8.3  
-**Stable tag:** 1.0.7  
+**Stable tag:** 1.1.0  
 **License:** GPLv3 or later  
 **License URI:** <http://www.gnu.org/licenses/gpl-3.0.html>  
 
@@ -83,6 +83,7 @@ The file will be moved to a protected location and only be accessible to authent
 #### Filters
 
 * `restrict_media_file_access_protect_file`: Control whether a file should be protected
+* `restrict_media_file_access_serve_contents`: Substitute the bytes served for a protected file on a per-request basis (e.g. watermarking). Return a string to serve it verbatim (range serving is disabled), or `null` to serve the file unchanged. Receives `( $contents, $attachment_id, $file_path, $mime_type )`.
 
 ### Security Features
 

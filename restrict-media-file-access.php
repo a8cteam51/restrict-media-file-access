@@ -14,7 +14,7 @@
  * Plugin Name:             Restrict Media File Access
  * Plugin URI:              https://wpspecialprojects.wordpress.com
  * Description:             Restrict access to media files by custom access control.
- * Version:                 1.1.0
+ * Version:                 1.2.0
  * Requires at least:       6.4
  * Tested up to:            6.8
  * Requires PHP:            8.3
@@ -73,6 +73,10 @@ if ( is_wp_error( RESTRICT_MEDIA_FILE_ACCESS_REQUIREMENTS ) ) {
 } else {
 	require_once RESTRICT_MEDIA_FILE_ACCESS_DIR_PATH . '/functions.php';
 	add_action( 'plugins_loaded', array( restrict_media_file_access_get_plugin_instance(), 'maybe_initialize' ) );
+
+	// The current user is resolved and cached the first time anything calls wp_get_current_user(),
+	// which can happen before plugins_loaded — so this filter must be registered at load time.
+	( new A8C\SpecialProjects\RestrictMediaFileAccess\ApplicationPasswords() )->initialize();
 }
 
 // Activation hook

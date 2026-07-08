@@ -401,6 +401,7 @@ class AttachmentsProtector {
 		header( 'Content-Disposition: inline; filename="' . basename( $file_path ) . '"' );
 		header( 'Accept-Ranges: none' );
 		header( 'Content-Length: ' . strlen( $contents ) );
+		$this->send_private_cache_headers();
 
 		do_action( 'restrict_media_file_access_before_serve', $attachment_id, $file_path );
 
@@ -601,6 +602,25 @@ class AttachmentsProtector {
 
 		$content_length = ( $end - $start ) + 1;
 		header( 'Content-Length: ' . $content_length );
+		$this->send_private_cache_headers();
+	}
+
+	/**
+	 * Send headers preventing shared caches from storing served file responses.
+	 *
+	 * The same protected file URL returns either the real file bytes or a
+	 * placeholder depending on the requester's authentication, so a shared or
+	 * edge cache storing an authenticated response would leak restricted
+	 * content to anonymous visitors.
+	 *
+	 * @since   1.2.0
+	 * @version 1.2.0
+	 *
+	 * @return void
+	 */
+	private function send_private_cache_headers(): void {
+		header( 'Cache-Control: private, no-store, max-age=0' );
+		header( 'Vary: Authorization', false );
 	}
 
 	/**

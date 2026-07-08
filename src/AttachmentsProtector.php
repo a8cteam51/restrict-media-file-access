@@ -133,6 +133,9 @@ class AttachmentsProtector {
 			header( $key . ': ' . $value );
 		}
 
+		// The same URL serves either the placeholder or real file bytes depending on authentication.
+		header( 'Vary: Authorization', false );
+
 		/**
 		 * Filter the image data sent for protected files
 		 *

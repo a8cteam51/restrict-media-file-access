@@ -366,7 +366,8 @@ class AttachmentsProtector {
 			$filesize,
 			$start,
 			$end,
-			$is_partial
+			$is_partial,
+			$attachment_id
 		);
 
 		do_action( 'restrict_media_file_access_before_serve', $attachment_id, $file_path );
@@ -404,7 +405,7 @@ class AttachmentsProtector {
 		header( 'Content-Disposition: inline; filename="' . basename( $file_path ) . '"' );
 		header( 'Accept-Ranges: none' );
 		header( 'Content-Length: ' . strlen( $contents ) );
-		$this->send_private_cache_headers();
+		$this->send_private_cache_headers( $attachment_id, $file_path );
 
 		do_action( 'restrict_media_file_access_before_serve', $attachment_id, $file_path );
 
@@ -575,14 +576,15 @@ class AttachmentsProtector {
 	 * Send headers for full or partial content responses.
 	 *
 	 * @since   1.0.1
-	 * @version 1.0.1
+	 * @version 1.3.0
 	 *
-	 * @param string $mime_type   MIME type.
-	 * @param string $file_path   File path.
-	 * @param int    $filesize    File size.
-	 * @param int    $start       Start byte.
-	 * @param int    $end         End byte.
-	 * @param bool   $is_partial  Whether partial content.
+	 * @param string $mime_type     MIME type.
+	 * @param string $file_path     File path.
+	 * @param int    $filesize      File size.
+	 * @param int    $start         Start byte.
+	 * @param int    $end           End byte.
+	 * @param bool   $is_partial    Whether partial content.
+	 * @param int    $attachment_id The attachment ID being served.
 	 *
 	 * @return void
 	 */
@@ -592,7 +594,8 @@ class AttachmentsProtector {
 		int $filesize,
 		int $start,
 		int $end,
-		bool $is_partial
+		bool $is_partial,
+		int $attachment_id
 	): void {
 		header( 'Content-Type: ' . $mime_type );
 		header( 'Content-Disposition: inline; filename="' . basename( $file_path ) . '"' );
@@ -605,7 +608,7 @@ class AttachmentsProtector {
 
 		$content_length = ( $end - $start ) + 1;
 		header( 'Content-Length: ' . $content_length );
-		$this->send_private_cache_headers();
+		$this->send_private_cache_headers( $attachment_id, $file_path );
 	}
 
 	/**
@@ -617,12 +620,37 @@ class AttachmentsProtector {
 	 * content to anonymous visitors.
 	 *
 	 * @since   1.2.0
-	 * @version 1.2.0
+	 * @version 1.3.0
+	 *
+	 * @param int    $attachment_id The attachment ID being served.
+	 * @param string $file_path     Absolute path to the file being served.
 	 *
 	 * @return void
 	 */
-	private function send_private_cache_headers(): void {
-		header( 'Cache-Control: private, no-store, max-age=0' );
+	private function send_private_cache_headers( int $attachment_id, string $file_path ): void {
+		/**
+		 * Filter the Cache-Control header sent with successfully served file responses.
+		 *
+		 * The default forbids all caching because the same URL returns either the
+		 * real bytes or a placeholder depending on the requester's authentication.
+		 * Only relax this when every credential involved is part of the URL itself
+		 * (e.g. an access token query argument), so caches cannot serve one
+		 * requester's response to a differently-authorized requester.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param string $cache_control The Cache-Control header value.
+		 * @param int    $attachment_id The attachment ID being served.
+		 * @param string $file_path     Absolute path to the file being served.
+		 */
+		$cache_control = apply_filters(
+			'restrict_media_file_access_serve_cache_control',
+			'private, no-store, max-age=0',
+			$attachment_id,
+			$file_path
+		);
+
+		header( 'Cache-Control: ' . $cache_control );
 		header( 'Vary: Authorization', false );
 	}
 

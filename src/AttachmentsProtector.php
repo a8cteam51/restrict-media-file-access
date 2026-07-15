@@ -635,7 +635,11 @@ class AttachmentsProtector {
 		 * real bytes or a placeholder depending on the requester's authentication.
 		 * Only relax this when every credential involved is part of the URL itself
 		 * (e.g. an access token query argument), so caches cannot serve one
-		 * requester's response to a differently-authorized requester.
+		 * requester's response to a differently-authorized requester. This filter
+		 * also runs for substitute-content responses, whose bytes may be
+		 * personalized per request (e.g. watermarks from a
+		 * `restrict_media_file_access_serve_contents` callback) — keep the
+		 * no-store default in that case regardless of how credentials are carried.
 		 *
 		 * @since 1.3.0
 		 *

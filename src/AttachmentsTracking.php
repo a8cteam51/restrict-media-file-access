@@ -64,7 +64,7 @@ class AttachmentsTracking {
 	 * Process URLs for a specific media item.
 	 *
 	 * @since   1.0.0
-	 * @version 1.0.0
+	 * @version 1.4.0
 	 *
 	 * @param int           $media_id The media ID.
 	 * @param array<string> $urls The URLs to process.
@@ -74,6 +74,35 @@ class AttachmentsTracking {
 	 */
 	private function process_media_urls( int $media_id, array $urls, string $post_content ): string {
 		$is_restricted = rmfa_is_media_restricted( $media_id );
+
+		if ( ! $is_restricted ) {
+			/**
+			 * Filters whether protected-files URLs that resolve to an unrestricted
+			 * attachment should be rewritten to the attachment's public URL when a
+			 * post is saved.
+			 *
+			 * Disabled by default because this direction of the rewrite weakens
+			 * access control instead of failing closed. The restriction flag can be
+			 * off while the attachment's hash and URL map still resolve: both are
+			 * kept when a file is unrestricted, and during restriction the flag is
+			 * written only after the file moves complete. In that state, saving ANY
+			 * post that references the protected URL (including REST API saves made
+			 * by automations) would silently convert a gated link into a public
+			 * direct-download link, with the resulting revision attributed to the
+			 * saving user.
+			 *
+			 * The opposite direction -- public URLs of a *restricted* attachment
+			 * being rewritten to its protected URL -- is unaffected by this filter.
+			 *
+			 * @since 1.4.0
+			 *
+			 * @param bool $rewrite  Whether to rewrite the URLs. Default false.
+			 * @param int  $media_id The attachment ID the URLs resolve to.
+			 */
+			if ( ! apply_filters( 'rmfa_rewrite_unrestricted_file_urls', false, $media_id ) ) {
+				return $post_content;
+			}
+		}
 
 		foreach ( $urls as $url ) {
 			$should_fix_url = $is_restricted

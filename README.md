@@ -5,7 +5,7 @@
 **Requires at least:** 6.5  
 **Tested up to:** 6.5  
 **Requires PHP:** 8.3  
-**Stable tag:** 1.3.0  
+**Stable tag:** 1.4.0  
 **License:** GPLv3 or later  
 **License URI:** <http://www.gnu.org/licenses/gpl-3.0.html>  
 
@@ -85,6 +85,7 @@ The file will be moved to a protected location and only be accessible to authent
 * `restrict_media_file_access_protect_file`: Control whether a file should be protected
 * `restrict_media_file_access_serve_contents`: Substitute the bytes served for a protected file on a per-request basis (e.g. watermarking). Return a string to serve it verbatim (range serving is disabled), or `null` to serve the file unchanged. Receives `( $contents, $attachment_id, $file_path, $mime_type )`.
 * `restrict_media_file_access_serve_cache_control`: Adjust the `Cache-Control` header sent with successfully served files (default `private, no-store, max-age=0`). Only relax it when every credential is part of the URL itself and the served bytes are not personalized per request. Receives `( $cache_control, $attachment_id, $file_path )`.
+* `restrict_media_file_access_serve_on_parse_request`: Whether to serve protected files on `parse_request` (default `true`). Return `false` to fall back to serving on `template_redirect`, e.g. when an access integration registers its `restrict_media_file_access_protect_file` filter later than `init`.
 
 ### Security Features
 

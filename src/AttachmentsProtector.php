@@ -21,7 +21,13 @@ class AttachmentsProtector {
 	 * @return void
 	 */
 	public function initialize(): void {
-		// Setup file protection — priority 5 to run before redirect_canonical (priority 10).
+		// Serve file requests on parse_request, before the main query and template
+		// stack run for a request that only streams a file.
+		add_action( 'parse_request', array( $this, 'handle_protected_file_early' ) );
+
+		// Fallback — priority 5 to run before redirect_canonical (priority 10).
+		// Unreachable when the parse_request handler served (it exits), but keeps
+		// file requests working if anything prevents the early handler from running.
 		add_action( 'template_redirect', array( $this, 'handle_protected_file' ), 5 );
 
 		// Prevent WordPress canonical redirect from adding trailing slashes to protected file URLs.
@@ -54,24 +60,75 @@ class AttachmentsProtector {
 	}
 
 	/**
+	 * Handle protected file access on parse_request.
+	 *
+	 * Serving here skips the main query, canonical-redirect handling, and the
+	 * whole template stack for requests that only stream a file. parse_request
+	 * fires immediately after init, so access integrations must have registered
+	 * their `restrict_media_file_access_protect_file` /
+	 * `restrict_media_file_access_serve_contents` filters by init at the latest —
+	 * a filter added later is never consulted for file requests. Sites that need
+	 * a later-registered gate can return false from
+	 * `restrict_media_file_access_serve_on_parse_request` to fall back to the
+	 * template_redirect handler.
+	 *
+	 * The main query has not run yet, so the query var is read from the passed
+	 * WP environment rather than get_query_var().
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @param \WP $wp The WordPress environment instance for the current request.
+	 *
+	 * @return void
+	 */
+	public function handle_protected_file_early( \WP $wp ): void {
+		if ( ! isset( $wp->query_vars['protected_file'] ) ) {
+			return;
+		}
+
+		$protected_file = $wp->query_vars['protected_file'];
+
+		if ( ! is_string( $protected_file ) || '' === $protected_file ) {
+			return;
+		}
+
+		if ( ! apply_filters( 'restrict_media_file_access_serve_on_parse_request', true ) ) {
+			return;
+		}
+
+		$this->serve_protected_file_request( $protected_file );
+	}
+
+	/**
 	 * Handle protected file access.
 	 *
 	 * @since   1.0.0
-	 * @version 1.0.0
+	 * @version 1.4.0
 	 *
 	 * @return void
 	 */
 	public function handle_protected_file(): void {
 		$protected_file = get_query_var( 'protected_file' );
 
-		if ( empty( $protected_file ) ) {
+		if ( ! is_string( $protected_file ) || '' === $protected_file ) {
 			return;
 		}
 
-		if ( false === is_string( $protected_file ) ) {
-			return;
-		}
+		$this->serve_protected_file_request( $protected_file );
+	}
 
+	/**
+	 * Serve a protected-file request and exit.
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @param string $protected_file The protected file being accessed.
+	 *
+	 * @return void
+	 */
+	private function serve_protected_file_request( string $protected_file ): void {
 		$this->disable_caching();
 
 		if ( $this->is_file_protected( $protected_file ) ) {

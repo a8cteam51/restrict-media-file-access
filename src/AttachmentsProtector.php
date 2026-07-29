@@ -311,6 +311,27 @@ class AttachmentsProtector {
 	private function serve_file( int $attachment_id, string $file_path ): void {
 		$mime_type = $this->determine_mime_type( $file_path );
 
+		$etag = $this->get_validator_etag( $attachment_id, $file_path );
+
+		// An empty ETag (filtered away, or file metadata unavailable) disables
+		// conditional handling entirely, so Last-Modified must not be offered
+		// either — otherwise If-Modified-Since would still revalidate responses
+		// an integration explicitly opted out of.
+		$last_modified = '' === $etag ? '' : $this->get_validator_last_modified( $file_path );
+
+		// Conditional requests and HEAD are answered before the substitute-contents
+		// filter below, so revalidations and probes never pay for per-request
+		// content generation or body streaming.
+		if ( $this->is_request_not_modified( $etag, $last_modified ) ) {
+			$this->respond_with_not_modified( $etag, $last_modified, $attachment_id, $file_path );
+		}
+
+		$this->send_validator_headers( $etag, $last_modified );
+
+		if ( $this->is_head_request() ) {
+			$this->respond_to_head_request( $mime_type, $file_path, $attachment_id );
+		}
+
 		/**
 		 * Filter the bytes served for a protected file, allowing an integration to
 		 * substitute the on-disk contents on a per-request basis (e.g. watermarking).
@@ -416,6 +437,233 @@ class AttachmentsProtector {
 
 		// phpcs:ignore
 		echo $contents;
+		exit;
+	}
+
+	/**
+	 * Build the ETag validator for a served file.
+	 *
+	 * The validator is weak (`W/` prefix) because the same URL may serve
+	 * byte-different but semantically equivalent representations — a
+	 * `restrict_media_file_access_serve_contents` integration substitutes
+	 * per-request bytes for the same underlying file, and a weak match lets a
+	 * client keep its copy until the file itself changes.
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @param int    $attachment_id The attachment ID being served.
+	 * @param string $file_path     Absolute path to the file being served.
+	 *
+	 * @return string The ETag header value, or empty string when unavailable.
+	 */
+	private function get_validator_etag( int $attachment_id, string $file_path ): string {
+		$mtime    = filemtime( $file_path );
+		$filesize = filesize( $file_path );
+
+		$default_etag = '';
+		if ( false !== $mtime && false !== $filesize ) {
+			$default_etag = 'W/"' . md5( $file_path . '|' . $mtime . '|' . $filesize ) . '"';
+		}
+
+		/**
+		 * Filter the ETag sent with successfully served file responses.
+		 *
+		 * Return an empty string to disable conditional-request handling, e.g.
+		 * when an integration serves per-request bytes that must never be
+		 * revalidated against the on-disk file.
+		 *
+		 * @since 1.4.0
+		 *
+		 * @param string $default_etag  The ETag header value, or empty string.
+		 * @param int    $attachment_id The attachment ID being served.
+		 * @param string $file_path     Absolute path to the file being served.
+		 */
+		return (string) apply_filters( 'restrict_media_file_access_etag', $default_etag, $attachment_id, $file_path );
+	}
+
+	/**
+	 * Build the Last-Modified validator for a served file.
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @param string $file_path Absolute path to the file being served.
+	 *
+	 * @return string The Last-Modified header value, or empty string when unavailable.
+	 */
+	private function get_validator_last_modified( string $file_path ): string {
+		$mtime = filemtime( $file_path );
+
+		if ( false === $mtime ) {
+			return '';
+		}
+
+		return gmdate( 'D, d M Y H:i:s', $mtime ) . ' GMT';
+	}
+
+	/**
+	 * Send the cache validator headers.
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @param string $etag          The ETag header value, or empty string to skip.
+	 * @param string $last_modified The Last-Modified header value, or empty string to skip.
+	 *
+	 * @return void
+	 */
+	private function send_validator_headers( string $etag, string $last_modified ): void {
+		if ( '' !== $etag ) {
+			header( 'ETag: ' . $etag );
+		}
+
+		if ( '' !== $last_modified ) {
+			header( 'Last-Modified: ' . $last_modified );
+		}
+	}
+
+	/**
+	 * Check whether the request's conditional headers match the current validators.
+	 *
+	 * Implements RFC 7232 precedence: If-None-Match is evaluated when present
+	 * (with weak comparison), and If-Modified-Since is only consulted when the
+	 * request carries no If-None-Match header.
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @param string $etag          The current ETag validator, or empty string.
+	 * @param string $last_modified The current Last-Modified validator, or empty string.
+	 *
+	 * @return bool True when the client's cached copy is still valid.
+	 */
+	private function is_request_not_modified( string $etag, string $last_modified ): bool {
+		if ( isset( $_SERVER['HTTP_IF_NONE_MATCH'] ) ) {
+			$if_none_match = trim( sanitize_text_field( wp_unslash( $_SERVER['HTTP_IF_NONE_MATCH'] ) ) );
+
+			if ( '' === $if_none_match || '' === $etag ) {
+				return false;
+			}
+
+			if ( '*' === $if_none_match ) {
+				return true;
+			}
+
+			$current = $this->strip_weak_etag_prefix( $etag );
+			foreach ( explode( ',', $if_none_match ) as $candidate ) {
+				if ( $this->strip_weak_etag_prefix( trim( $candidate ) ) === $current ) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		if ( '' === $last_modified || ! isset( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ) {
+			return false;
+		}
+
+		$since_time    = strtotime( sanitize_text_field( wp_unslash( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ) );
+		$modified_time = strtotime( $last_modified );
+
+		return false !== $since_time && false !== $modified_time && $modified_time <= $since_time;
+	}
+
+	/**
+	 * Strip the weak-validator prefix from an ETag for weak comparison.
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @param string $etag The ETag value.
+	 *
+	 * @return string The ETag without a leading weak prefix.
+	 */
+	private function strip_weak_etag_prefix( string $etag ): string {
+		if ( str_starts_with( $etag, 'W/' ) ) {
+			return substr( $etag, 2 );
+		}
+
+		return $etag;
+	}
+
+	/**
+	 * Send a 304 Not Modified response and exit.
+	 *
+	 * Per RFC 7232 the response carries the validators and the cache headers the
+	 * equivalent 200 would have carried, and no body.
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @param string $etag          The ETag header value, or empty string to skip.
+	 * @param string $last_modified The Last-Modified header value, or empty string to skip.
+	 * @param int    $attachment_id The attachment ID being served.
+	 * @param string $file_path     Absolute path to the file being served.
+	 *
+	 * @return void
+	 *
+	 * @SuppressWarnings("PHPMD.ExitExpression")
+	 */
+	private function respond_with_not_modified( string $etag, string $last_modified, int $attachment_id, string $file_path ): void {
+		header( 'HTTP/1.1 304 Not Modified' );
+		$this->send_validator_headers( $etag, $last_modified );
+		$this->send_private_cache_headers( $attachment_id, $file_path );
+
+		// phpcs:ignore
+		exit;
+	}
+
+	/**
+	 * Check whether the current request is a HEAD request.
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @return bool
+	 */
+	private function is_head_request(): bool {
+		if ( ! isset( $_SERVER['REQUEST_METHOD'] ) ) {
+			return false;
+		}
+
+		return 'HEAD' === strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) );
+	}
+
+	/**
+	 * Answer a HEAD request with headers only and exit.
+	 *
+	 * Content-Length reports the on-disk size unless a substitute-contents
+	 * integration is registered: substituted bytes may differ in length, and
+	 * computing that length would require the very work HEAD exists to avoid.
+	 *
+	 * @since   1.4.0
+	 * @version 1.4.0
+	 *
+	 * @param string $mime_type     The resolved MIME type.
+	 * @param string $file_path     Absolute path to the file being served.
+	 * @param int    $attachment_id The attachment ID being served.
+	 *
+	 * @return void
+	 *
+	 * @SuppressWarnings("PHPMD.ExitExpression")
+	 */
+	private function respond_to_head_request( string $mime_type, string $file_path, int $attachment_id ): void {
+		header( 'Content-Type: ' . $mime_type );
+		header( 'Content-Disposition: inline; filename="' . basename( $file_path ) . '"' );
+		header( 'Accept-Ranges: bytes' );
+
+		if ( ! has_filter( 'restrict_media_file_access_serve_contents' ) ) {
+			$filesize = filesize( $file_path );
+			if ( false !== $filesize ) {
+				header( 'Content-Length: ' . $filesize );
+			}
+		}
+
+		$this->send_private_cache_headers( $attachment_id, $file_path );
+
+		// phpcs:ignore
 		exit;
 	}
 

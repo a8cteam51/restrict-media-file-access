@@ -67,7 +67,10 @@ class AttachmentsProtector {
 	 * fires immediately after init, so access integrations must have registered
 	 * their `restrict_media_file_access_protect_file` /
 	 * `restrict_media_file_access_serve_contents` filters by init at the latest —
-	 * a filter added later is never consulted for file requests.
+	 * a filter added later is never consulted for file requests. Sites that need
+	 * a later-registered gate can return false from
+	 * `restrict_media_file_access_serve_on_parse_request` to fall back to the
+	 * template_redirect handler.
 	 *
 	 * The main query has not run yet, so the query var is read from the passed
 	 * WP environment rather than get_query_var().
@@ -90,6 +93,10 @@ class AttachmentsProtector {
 			return;
 		}
 
+		if ( ! apply_filters( 'restrict_media_file_access_serve_on_parse_request', true ) ) {
+			return;
+		}
+
 		$this->serve_protected_file_request( $protected_file );
 	}
 
@@ -104,11 +111,7 @@ class AttachmentsProtector {
 	public function handle_protected_file(): void {
 		$protected_file = get_query_var( 'protected_file' );
 
-		if ( empty( $protected_file ) ) {
-			return;
-		}
-
-		if ( false === is_string( $protected_file ) ) {
+		if ( ! is_string( $protected_file ) || '' === $protected_file ) {
 			return;
 		}
 

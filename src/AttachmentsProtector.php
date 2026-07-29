@@ -311,8 +311,13 @@ class AttachmentsProtector {
 	private function serve_file( int $attachment_id, string $file_path ): void {
 		$mime_type = $this->determine_mime_type( $file_path );
 
-		$etag          = $this->get_validator_etag( $attachment_id, $file_path );
-		$last_modified = $this->get_validator_last_modified( $file_path );
+		$etag = $this->get_validator_etag( $attachment_id, $file_path );
+
+		// An empty ETag (filtered away, or file metadata unavailable) disables
+		// conditional handling entirely, so Last-Modified must not be offered
+		// either — otherwise If-Modified-Since would still revalidate responses
+		// an integration explicitly opted out of.
+		$last_modified = '' === $etag ? '' : $this->get_validator_last_modified( $file_path );
 
 		// Conditional requests and HEAD are answered before the substitute-contents
 		// filter below, so revalidations and probes never pay for per-request
@@ -629,9 +634,9 @@ class AttachmentsProtector {
 	/**
 	 * Answer a HEAD request with headers only and exit.
 	 *
-	 * Content-Length is deliberately omitted: a substitute-contents integration
-	 * may serve per-request bytes whose length differs from the on-disk file,
-	 * and computing it would require the very work HEAD exists to avoid.
+	 * Content-Length reports the on-disk size unless a substitute-contents
+	 * integration is registered: substituted bytes may differ in length, and
+	 * computing that length would require the very work HEAD exists to avoid.
 	 *
 	 * @since   1.4.0
 	 * @version 1.4.0
@@ -648,6 +653,14 @@ class AttachmentsProtector {
 		header( 'Content-Type: ' . $mime_type );
 		header( 'Content-Disposition: inline; filename="' . basename( $file_path ) . '"' );
 		header( 'Accept-Ranges: bytes' );
+
+		if ( ! has_filter( 'restrict_media_file_access_serve_contents' ) ) {
+			$filesize = filesize( $file_path );
+			if ( false !== $filesize ) {
+				header( 'Content-Length: ' . $filesize );
+			}
+		}
+
 		$this->send_private_cache_headers( $attachment_id, $file_path );
 
 		// phpcs:ignore

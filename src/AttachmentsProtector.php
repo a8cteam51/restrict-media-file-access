@@ -1018,7 +1018,7 @@ class AttachmentsProtector {
 	 * Disable caching for protected files.
 	 *
 	 * @since   1.0.0
-	 * @version 1.0.0
+	 * @version 1.4.1
 	 *
 	 * @return void
 	 */
@@ -1031,6 +1031,13 @@ class AttachmentsProtector {
 		}
 		if ( function_exists( 'batcache_cancel' ) ) {
 			\batcache_cancel();
+		}
+
+		// The A8C edge ignores Cache-Control for its own cache-class decisions and
+		// only forwards conditional request headers on bypassed requests.
+		$edge_cache = (string) apply_filters( 'restrict_media_file_access_a8c_edge_cache', 'no-cache' );
+		if ( '' !== $edge_cache && ! headers_sent() ) {
+			header( 'A8C-Edge-Cache: ' . $edge_cache );
 		}
 	}
 }

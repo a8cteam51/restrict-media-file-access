@@ -57,12 +57,21 @@ class SelfUpdate {
 			return false;
 		}
 
-		$output              = json_decode( wp_remote_retrieve_body( $response ), true );
-		$new_version_number  = $output['tag_name'];
-		$new_version_number  = str_replace( 'v', '', $new_version_number );
+		$output = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		// rate-limited or error responses lack the release fields
+		if ( ! is_array( $output ) || empty( $output['tag_name'] ) ) {
+			return false;
+		}
+
+		$new_version_number  = str_replace( 'v', '', $output['tag_name'] );
 		$is_update_available = version_compare( $plugin_data['Version'], $new_version_number, '<' );
 
 		if ( ! $is_update_available ) {
+			return false;
+		}
+
+		if ( ! isset( $output['html_url'], $output['assets'][0]['browser_download_url'] ) ) {
 			return false;
 		}
 

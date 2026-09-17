@@ -121,6 +121,39 @@ class AttachmentsProtector {
 	/**
 	 * Serve a protected-file request and exit.
 	 *
+	 * @since   1.5.0
+	 * @version 1.5.0
+	 *
+	 * @param string $protected_file The `{segment}` of the protected-file URL (hash with optional size suffix).
+	 *
+	 * @return void
+	 */
+	public function serve_request( string $protected_file ): void {
+		if ( '' === $protected_file ) {
+			return;
+		}
+
+		$this->serve_protected_file_request( $protected_file );
+	}
+
+	/**
+	 * Serve the denied-access placeholder and exit, without re-checking access.
+	 *
+	 * @since   1.5.0
+	 * @version 1.5.0
+	 *
+	 * @param string $protected_file The `{segment}` of the protected-file URL (hash with optional size suffix).
+	 *
+	 * @return void
+	 */
+	public function serve_placeholder( string $protected_file ): void {
+		$this->disable_caching();
+		$this->serve_file_as_protected( $protected_file );
+	}
+
+	/**
+	 * Serve a protected-file request and exit.
+	 *
 	 * @since   1.4.0
 	 * @version 1.4.0
 	 *
@@ -215,7 +248,7 @@ class AttachmentsProtector {
 	 * Serve an unprotected file.
 	 *
 	 * @since   1.0.0
-	 * @version 1.0.0
+	 * @version 1.5.0
 	 *
 	 * @param string $protected_file The protected file being accessed.
 	 * @return void
@@ -231,7 +264,16 @@ class AttachmentsProtector {
 			);
 		}
 
-		if ( ! Filesystem::exists( $file_info['file_path'] ) ) {
+		// Not Filesystem::exists() (AGENTS.md mandates it): its lazy WP_Filesystem init writes a temp probe file per request when FS_METHOD is unset.
+		if ( ! is_file( $file_info['file_path'] ) || ! is_readable( $file_info['file_path'] ) ) {
+			wp_die(
+				esc_html__( 'File not found.', 'restrict-media-file-access' ),
+				'404 Not Found',
+				array( 'response' => 404 )
+			);
+		}
+
+		if ( ! $this->is_file_within_uploads_dir( $file_info['file_path'] ) ) {
 			wp_die(
 				esc_html__( 'File not found.', 'restrict-media-file-access' ),
 				'404 Not Found',
@@ -250,6 +292,40 @@ class AttachmentsProtector {
 		}
 
 		$this->serve_file( $file_info['attachment_id'], $file_info['file_path'] );
+	}
+
+	/**
+	 * Check that a resolved file lives inside the uploads directory.
+	 *
+	 * @since   1.5.0
+	 * @version 1.5.0
+	 *
+	 * @param string $file_path Absolute path to the resolved file.
+	 *
+	 * @return bool
+	 */
+	private function is_file_within_uploads_dir( string $file_path ): bool {
+		/**
+		 * Filter whether served files must resolve to a path inside the uploads directory.
+		 *
+		 * @since 1.5.0
+		 *
+		 * @param bool   $require_uploads_dir Whether to enforce the uploads-directory guard. Default true.
+		 * @param string $file_path           Absolute path to the resolved file.
+		 */
+		if ( ! apply_filters( 'restrict_media_file_access_require_uploads_dir', true, $file_path ) ) {
+			return true;
+		}
+
+		// realpath() both sides so a symlinked uploads directory still passes.
+		$real_file = realpath( $file_path );
+		$real_base = realpath( wp_get_upload_dir()['basedir'] );
+
+		if ( false === $real_file || false === $real_base ) {
+			return false;
+		}
+
+		return str_starts_with( $real_file, rtrim( $real_base, '/\\' ) . DIRECTORY_SEPARATOR );
 	}
 
 	/**
@@ -317,7 +393,7 @@ class AttachmentsProtector {
 	 * Resolve the file path, handling type and size suffix.
 	 *
 	 * @since   1.0.0
-	 * @version 1.0.0
+	 * @version 1.5.0
 	 *
 	 * @param string $file_path The file path.
 	 * @param string $size_suffix The size suffix.
@@ -344,7 +420,7 @@ class AttachmentsProtector {
 			}
 			$sized_file = $base_dir . '/' . $file_name . $size_suffix . '.' . $file_extension;
 
-			if ( Filesystem::exists( $sized_file ) ) {
+			if ( is_file( $sized_file ) ) {
 				return $sized_file;
 			}
 		}

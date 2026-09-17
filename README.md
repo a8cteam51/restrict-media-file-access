@@ -5,7 +5,7 @@
 **Requires at least:** 6.5  
 **Tested up to:** 6.5  
 **Requires PHP:** 8.3  
-**Stable tag:** 1.5.0  
+**Stable tag:** 1.5.1  
 **License:** GPLv3 or later  
 **License URI:** <http://www.gnu.org/licenses/gpl-3.0.html>  
 
@@ -188,6 +188,10 @@ Yes, the plugin provides REST API endpoints for programmatically managing file r
 We welcome contributions! Please feel free to submit a Pull Request.
 
 ## Changelog
+
+### 1.5.1
+
+* Stop the Media Library grid from overwriting the open Edit Media modal. The attachment render override reaches `.attachment-details` with a document-wide selector, so while the grid was still loading pages, every tile rendered behind the modal replaced the preview image with its own file and toggled the restricted-file styling on and off. Both writes are now skipped unless the attachment being rendered is the one the modal is showing.
 
 ### 1.5.0
 

@@ -192,11 +192,27 @@
 			return result;
 		}
 
+		const editFrame = wp.media.frames && wp.media.frames.edit;
+		const editModel = editFrame && editFrame.model;
+		const isEditFrameOpen = !!(
+			editFrame &&
+			editFrame.modal &&
+			editFrame.modal.$el &&
+			editFrame.modal.$el.is(':visible')
+		);
+
+		// ATTACHMENT_MEDIA_VIEW_DETAILS is document-wide, so while that modal is open every other tile rewrites it.
+		const ownsDetails = !(
+			isEditFrameOpen &&
+			editModel &&
+			editModel.get('id') !== this.model.get('id')
+		);
+
 		// Add custom classes after rendering
 		if (isProtected) {
 			this.$el.addClass(rmfaClasses.join(' '));
 
-			if (isSelected) {
+			if (isSelected && ownsDetails) {
 				$(ATTACHMENT_MEDIA_VIEW_DETAILS).addClass(
 					rmfaClasses.join(' ')
 				);
@@ -204,14 +220,14 @@
 		} else {
 			this.$el.removeClass(rmfaClasses.join(' '));
 
-			if (isSelected) {
+			if (isSelected && ownsDetails) {
 				$(ATTACHMENT_MEDIA_VIEW_DETAILS).removeClass(
 					rmfaClasses.join(' ')
 				);
 			}
 		}
 
-		if (isMediaModalOpen() && isSelected) {
+		if (isMediaModalOpen() && isSelected && ownsDetails) {
 			// Add the file URL to the attachment details
 			const $viewMediaModal = $(ATTACHMENT_MEDIA_VIEW_DETAILS);
 			$viewMediaModal

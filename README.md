@@ -5,7 +5,7 @@
 **Requires at least:** 6.5  
 **Tested up to:** 6.5  
 **Requires PHP:** 8.3  
-**Stable tag:** 1.4.2  
+**Stable tag:** 1.5.0  
 **License:** GPLv3 or later  
 **License URI:** <http://www.gnu.org/licenses/gpl-3.0.html>  
 
@@ -87,6 +87,19 @@ The file will be moved to a protected location and only be accessible to authent
 * `restrict_media_file_access_serve_cache_control`: Adjust the `Cache-Control` header sent with successfully served files (default `private, no-store, max-age=0`). Only relax it when every credential is part of the URL itself and the served bytes are not personalized per request. Receives `( $cache_control, $attachment_id, $file_path )`.
 * `restrict_media_file_access_serve_on_parse_request`: Whether to serve protected files on `parse_request` (default `true`). Return `false` to fall back to serving on `template_redirect`, e.g. when an access integration registers its `restrict_media_file_access_protect_file` filter later than `init`.
 * `restrict_media_file_access_a8c_edge_cache`: Value of the `A8C-Edge-Cache` header sent with protected-file responses (default `no-cache`, which keeps these per-user responses out of the WordPress.com/WP Cloud edge cache so conditional requests reach the plugin). Return an empty string to suppress the header. Ignored by other hosts.
+* `restrict_media_file_access_require_uploads_dir`: Whether a served file must resolve (via `realpath()`, so a symlinked uploads directory is fine) to a path inside the uploads directory (default `true`). Files that fail the check get the same 404 as a missing file. Return `false` only when protected files are deliberately kept elsewhere, e.g. a `.protected` directory symlinked outside uploads. Receives `( $require_uploads_dir, $file_path )`.
+
+#### Integration entry points
+
+`AttachmentsProtector` exposes two public methods for integrations that resolve the `protected-files/{segment}` URL themselves (for example a lightweight handler that runs before the rewrite rules and main query). Both send the response and exit, exactly like the built-in `parse_request` / `template_redirect` handlers:
+
+* `serve_request( string $segment )`: runs the full pipeline — the `restrict_media_file_access_protect_file` access check, the placeholder for denied requests, and the file response (conditional requests, `HEAD`, `Range`, `restrict_media_file_access_serve_contents`) otherwise. Any filter the integration relies on must already be registered. Does nothing for an empty segment.
+* `serve_placeholder( string $segment )`: sends the denied-access placeholder (`restrict_media_file_access_protected_headers` / `restrict_media_file_access_protected_image`) without re-running the access check, for callers that have already denied the request.
+
+```php
+$protector = new \A8C\SpecialProjects\RestrictMediaFileAccess\AttachmentsProtector();
+$protector->serve_request( $segment ); // never returns for a non-empty $segment
+```
 
 ### Security Features
 
@@ -173,3 +186,11 @@ Yes, the plugin provides REST API endpoints for programmatically managing file r
 ## Contributing
 
 We welcome contributions! Please feel free to submit a Pull Request.
+
+## Changelog
+
+### 1.5.0
+
+* Add `AttachmentsProtector::serve_request()` and `AttachmentsProtector::serve_placeholder()` as public entry points so integrations can serve a protected-file request (or the denied placeholder) with the built-in behaviour.
+* Refuse to serve a file that does not resolve inside the uploads directory (both sides compared via `realpath()`; responds with the file-not-found 404). Controlled by the new `restrict_media_file_access_require_uploads_dir` filter (default `true`).
+* Check file existence on the serve path with native `is_file()` / `is_readable()` instead of `WP_Filesystem`, so serving a file no longer triggers the `WP_Filesystem` initialization (and, when `FS_METHOD` is unset, its temporary-file write probe) on every request. `WP_Filesystem` is still used for moving and deleting files.
